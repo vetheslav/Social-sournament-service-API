@@ -1,0 +1,10 @@
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  user: vista
+  pass: vista123
+  table: social_tourment
+
+http_server:
+  host: 127.0.0.1
+  port: 1323
