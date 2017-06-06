@@ -243,7 +243,7 @@ func getPoints(context echo.Context) (points float64, err error) {
 			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points is not number"})
 		}
 	} else {
-		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points is not found"})
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points isn't found"})
 	}
 
 	return
