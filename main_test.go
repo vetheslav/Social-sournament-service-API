@@ -21,13 +21,20 @@ var balancePageTests = []balancePagePair{
 }
 
 var takePointsErrorsTests = []string{
+	"/take",
 	"/take?playerId=1",
 	"/take?playerId=1&points=df",
 }
 
 var fundPointsErrorsTests = []string{
+	"/fund",
 	"/fund?playerId=1",
 	"/fund?playerId=1&points=df",
+}
+
+var announceTournamentErrorsTests = []string{
+	"/announceTournament",
+	"/announceTournament?deposit=hello",
 }
 
 func TestBalancePage(t *testing.T) {
@@ -128,5 +135,37 @@ func TestFundPoints(t *testing.T) {
 
 	if assert.NoError(t, fundPage(context)) {
 		assert.JSONEq(t, rec.Body.String(), `{"playerId":1,"balance":40.04}`)
+	}
+}
+
+func TestAnnounceTournamentErrors(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	for _, url := range announceTournamentErrorsTests {
+		req := httptest.NewRequest(echo.GET, url, nil)
+		rec := httptest.NewRecorder()
+		c := echoServer.NewContext(req, rec)
+
+		assert.Error(t, takePage(c))
+	}
+}
+
+func TestAnnounceTournament(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	req := httptest.NewRequest(echo.GET, "/announceTournament?deposit=1000", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	if assert.NoError(t, announceTournamentPage(context)) {
+		assert.Regexp(t,"{\"Id\":.*", rec.Body.String())
 	}
 }

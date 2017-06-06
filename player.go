@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	_ "github.com/ziutek/mymysql/native"
+	"strconv"
 )
 
 type Player struct {
@@ -22,7 +23,7 @@ SELECT balance FROM players WHERE id = %d`, player.Id)
 		balanceMap := res.Map("balance")
 		player.Balance = rows[0].Float(balanceMap)
 	} else {
-		err = errors.New("Player not found")
+		err = errors.New("Player " + strconv.Itoa(player.Id) + " is not found")
 	}
 
 	return

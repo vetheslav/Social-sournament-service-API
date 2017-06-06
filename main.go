@@ -32,6 +32,7 @@ func main() {
 	echoServer.GET("balance", balancePage)
 	echoServer.GET("take", takePage)
 	echoServer.GET("fund", fundPage)
+	echoServer.GET("announceTournament", announceTournamentPage)
 
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
@@ -90,6 +91,20 @@ func fundPage(context echo.Context) error {
 	return err
 }
 
+func announceTournamentPage(context echo.Context) error {
+	tournament := Tournament{}
+	deposit, err := getDeposit(context)
+	if err == nil {
+		err = tournament.New(deposit)
+		if err == nil {
+			return context.JSON(http.StatusOK, tournament)
+		}
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "there are problems with create tournament: " + err.Error()})
+	}
+
+	return err
+}
+
 func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
 	player = Player{}
 	playerIDString := context.QueryParam("playerId")
@@ -99,13 +114,39 @@ func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
 		if err == nil {
 			err = player.initPlayer(playerID)
 			if err != nil {
-				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player not found"})
+				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player is not found"})
 			}
 		} else {
-			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId in not number"})
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId is in not number"})
 		}
 	} else {
-		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId not found"})
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId is not found"})
+	}
+
+	return
+}
+
+func getTournamentByTournamentID(context echo.Context) (tournament Tournament, err error) {
+	tournament = Tournament{}
+	tournamentIDString := context.QueryParam("tournamentId")
+	if tournamentIDString != "" {
+		var tournamentID int
+		tournamentID, err = strconv.Atoi(tournamentIDString)
+		if err == nil {
+			err = tournament.initTournament(tournamentID)
+			if err == nil {
+				err = tournament.initTournamentPlayers()
+				if err != nil {
+					err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "there are problems with init players: " + err.Error()})
+				}
+			} else {
+				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "tournament is not found"})
+			}
+		} else {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "tournamentId is not number"})
+		}
+	} else {
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "tournamentId is not found"})
 	}
 
 	return
@@ -116,10 +157,24 @@ func getPoints(context echo.Context) (points float64, err error) {
 	if pointsString != "" {
 		points, err = strconv.ParseFloat(pointsString, 64)
 		if err != nil {
-			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points in not number"})
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points is not number"})
 		}
 	} else {
-		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points not found"})
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points is not found"})
+	}
+
+	return
+}
+
+func getDeposit(context echo.Context) (deposit float64, err error) {
+	depositString := context.QueryParam("deposit")
+	if depositString != "" {
+		deposit, err = strconv.ParseFloat(depositString, 64)
+		if err != nil {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "deposit is not number"})
+		}
+	} else {
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "deposit is not found"})
 	}
 
 	return
