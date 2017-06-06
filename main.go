@@ -31,6 +31,7 @@ func main() {
 
 	echoServer.GET("balance", balancePage)
 	echoServer.GET("take", takePage)
+	echoServer.GET("fund", fundPage)
 
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
@@ -66,6 +67,22 @@ func takePage(context echo.Context) error {
 				}
 			} else {
 				err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "not enough points"})
+			}
+		}
+	}
+
+	return err
+}
+
+func fundPage(context echo.Context) error {
+	player, err := getPlayerByPlayerID(context)
+	if err == nil {
+		var points float64
+		points, err = getPoints(context)
+		if err == nil {
+			err = player.fundPoints(points)
+			if err == nil {
+				return context.JSON(http.StatusOK, player)
 			}
 		}
 	}

@@ -30,7 +30,17 @@ SELECT balance FROM players WHERE id = %d`, player.Id)
 
 func (player *Player) takePoints(points float64) (err error) {
 	_, _, err = db.Query(`
-UPDATE players SET balance=balance-%f WHERE id = %d`, points, player.Id)
+UPDATE players SET balance = balance - %f WHERE id = %d`, points, player.Id)
+	if err != nil {
+		return
+	}
+
+	return player.initPlayer(player.Id)
+}
+
+func (player *Player) fundPoints(points float64) (err error) {
+	_, _, err = db.Query(`
+UPDATE players SET balance = balance + %f WHERE id = %d`, points, player.Id)
 	if err != nil {
 		return
 	}

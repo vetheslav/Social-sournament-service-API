@@ -25,6 +25,11 @@ var takePointsErrorsTests = []string{
 	"/take?playerId=1&points=df",
 }
 
+var fundPointsErrorsTests = []string{
+	"/fund?playerId=1",
+	"/fund?playerId=1&points=df",
+}
+
 func TestBalancePage(t *testing.T) {
 	mysqlConnect()
 	defer db.Close()
@@ -76,20 +81,52 @@ func TestTakePointsNotEnough(t *testing.T) {
 	assert.Error(t, takePage(context))
 }
 
-
 func TestTakePoints(t *testing.T) {
 	mysqlConnect()
 	defer db.Close()
 	conf.initConfig()
 
-	db.Query("UPDATE players SET balance = 30 WHERE id = 1")
+	db.Query("UPDATE players SET balance = 30.02 WHERE id = 1")
 
 	echoServer := echo.New()
-	req := httptest.NewRequest(echo.GET, "/take?playerId=1&points=10", nil)
+	req := httptest.NewRequest(echo.GET, "/take?playerId=1&points=10.01", nil)
 	rec := httptest.NewRecorder()
 	context := echoServer.NewContext(req, rec)
 
 	if assert.NoError(t, takePage(context)) {
-		assert.JSONEq(t, rec.Body.String(), `{"playerId":1,"balance":20}`)
+		assert.JSONEq(t, rec.Body.String(), `{"playerId":1,"balance":20.01}`)
+	}
+}
+
+func TestFundPointsErrors(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	for _, url := range fundPointsErrorsTests {
+		req := httptest.NewRequest(echo.GET, url, nil)
+		rec := httptest.NewRecorder()
+		c := echoServer.NewContext(req, rec)
+
+		assert.Error(t, takePage(c))
+	}
+}
+
+func TestFundPoints(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE players SET balance = 30.03 WHERE id = 1")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/fund?playerId=1&points=10.01", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	if assert.NoError(t, fundPage(context)) {
+		assert.JSONEq(t, rec.Body.String(), `{"playerId":1,"balance":40.04}`)
 	}
 }
