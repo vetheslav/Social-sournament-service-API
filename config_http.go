@@ -1,8 +1,8 @@
 package main
 
 type HttpServer struct {
-	host     string
-	port     string
+	host string
+	port string
 }
 
 func (http *HttpServer) parseConfigHttpHost() {

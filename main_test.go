@@ -8,9 +8,9 @@ import (
 )
 
 type balancePagePair struct {
-	url string
+	url       string
 	waitError bool
-	response string
+	response  string
 }
 
 var balancePageTests = []balancePagePair{

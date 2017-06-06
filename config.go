@@ -12,7 +12,6 @@ type Config struct {
 	configFile *config.Config
 	mysql      ConfigMysql
 	httpServer HttpServer
-
 }
 
 func (conf *Config) initConfig() {

@@ -6,7 +6,7 @@ import (
 )
 
 type Player struct {
-	Id      int `json:"playerId"`
+	Id      int     `json:"playerId"`
 	Balance float64 `json:"balance"`
 }
 

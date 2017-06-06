@@ -111,7 +111,6 @@ func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
 	return
 }
 
-
 func getPoints(context echo.Context) (points float64, err error) {
 	pointsString := context.QueryParam("points")
 	if pointsString != "" {
