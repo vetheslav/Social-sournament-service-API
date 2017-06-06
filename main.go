@@ -27,9 +27,10 @@ func main() {
 	mysqlConnect()
 	defer db.Close()
 	conf.initConfig()
-	log.Println(conf)
 	echoServer := echo.New()
+
 	echoServer.GET("balance", balancePage)
+
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
 
@@ -51,12 +52,11 @@ func balancePage(c echo.Context) error {
 			err = player.initPlayer(playerID)
 			if err == nil {
 				return c.JSON(http.StatusOK, player)
-			} else {
-				return c.JSON(http.StatusNotFound, echo.Map{"message": "player not found"})
 			}
+			return echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player not found"})
 		}
-		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "playerId in not number"})
+		return echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId in not number"})
 	}
-	return c.JSON(http.StatusInternalServerError, echo.Map{"message": "playerId not found"})
+	return echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId not found"})
 }
 

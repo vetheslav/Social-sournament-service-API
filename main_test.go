@@ -5,19 +5,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"testing"
-	"fmt"
 )
 
-func TestBalancePage(t *testing.T) {
-	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/balance", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+type balancePagePair struct {
+	url string
+	waitError bool
+	response string
+}
 
-	fmt.Println(balancePage(c))
-	// Assertions
-	if assert.NoError(t, balancePage(c)) {
-		//"assert.Equal(t, http.StatusOK, rec.Code)
-		//assert.Equal(t, userJSON, rec.Body.String())
+var balancePageTests = []balancePagePair{
+	{"/balance", true, ""},
+	{"/balance?playerId=hello", true, ""},
+	{"/balance?playerId=0", true, ""},
+	{"/balance?playerId=1", false, ""},
+}
+
+func TestBalancePage(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	for _, test := range balancePageTests {
+		req := httptest.NewRequest(echo.GET, test.url, nil)
+		rec := httptest.NewRecorder()
+		c := echoServer.NewContext(req, rec)
+
+		if !test.waitError && assert.NoError(t, balancePage(c)) {
+			assert.Regexp(t, "{\"playerId\":1,\"balance\":.*", rec.Body.String())
+		} else {
+			assert.Error(t, balancePage(c))
+		}
 	}
 }
