@@ -166,6 +166,6 @@ func TestAnnounceTournament(t *testing.T) {
 	context := echoServer.NewContext(req, rec)
 
 	if assert.NoError(t, announceTournamentPage(context)) {
-		assert.Regexp(t,"{\"Id\":.*", rec.Body.String())
+		assert.Regexp(t, "{\"Id\":.*", rec.Body.String())
 	}
 }

@@ -5,7 +5,7 @@ import (
 )
 
 type TournamentPlayer struct {
-	player Player
+	player  Player
 	backers []Player
 }
 
