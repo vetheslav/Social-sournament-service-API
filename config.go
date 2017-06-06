@@ -27,8 +27,7 @@ func (conf *Config) getConfigObject() {
 func (conf *Config) openConfigPath() (dir string) {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	CheckError(err, "Open config path")
-	//TODO убрать абсолютный путь
-	dir = "/Users/vetheslav/Dropbox/programming/test/Social-sournament-service-API/"
+	//dir = "/Users/vetheslav/Dropbox/programming/test/Social-sournament-service-API/"
 
 	return
 }
