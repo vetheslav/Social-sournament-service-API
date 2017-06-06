@@ -166,6 +166,7 @@ func TestAnnounceTournament(t *testing.T) {
 	context := echoServer.NewContext(req, rec)
 
 	if assert.NoError(t, announceTournamentPage(context)) {
-		assert.Regexp(t, "{\"Id\":.*", rec.Body.String())
+		assert.Regexp(t, "{\"tournamentId\":.*", rec.Body.String())
+		db.Query("DELETE FROM tournaments WHERE id = LAST_INSERT_ID()")
 	}
 }

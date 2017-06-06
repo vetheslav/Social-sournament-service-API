@@ -33,6 +33,7 @@ func main() {
 	echoServer.GET("take", takePage)
 	echoServer.GET("fund", fundPage)
 	echoServer.GET("announceTournament", announceTournamentPage)
+	echoServer.GET("joinTournament", joinTournamentPage)
 
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
@@ -105,6 +106,42 @@ func announceTournamentPage(context echo.Context) error {
 	return err
 }
 
+func joinTournamentPage(context echo.Context) error {
+	tournament, err := getTournamentByTournamentID(context)
+	if err == nil {
+		if tournament.isAvailable() {
+			var player Player
+			player, err = getPlayerByPlayerID(context)
+			if err == nil {
+				var backers []Player
+				backers, err = getBakersByBakerID(context)
+				if err == nil {
+					if tournament.canPlayerToParticipateByBalance(player) || tournament.canBackersParticipateTournament(backers) {
+						if !tournament.isPlayerInTournament(player) && !tournament.isPlayerInTournamentBackers(player) {
+							err = tournament.addBackerToTournament(player, backers)
+							if err == nil {
+								err = tournament.addPlayerToTournament(player, backers)
+								if err == nil {
+									return context.JSON(http.StatusOK, tournament)
+								}
+							}
+						} else {
+							err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "player is already in the tournament"})
+						}
+					} else {
+						err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "not enough points for participate"})
+					}
+				} else {
+					err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "there are problems with add backers: " + err.Error()})
+				}
+			}
+		} else {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "tournament is not available"})
+		}
+	}
+	return err
+}
+
 func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
 	player = Player{}
 	playerIDString := context.QueryParam("playerId")
@@ -117,10 +154,31 @@ func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
 				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player is not found"})
 			}
 		} else {
-			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId is in not number"})
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId is not number"})
 		}
 	} else {
 		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId is not found"})
+	}
+
+	return
+}
+
+func getBakersByBakerID(context echo.Context) (players []Player, err error) {
+	backerIDs := context.QueryParams()["backerId"]
+	for _, backerIDString := range backerIDs {
+		var backerID int
+		backerID, err = strconv.Atoi(backerIDString)
+		if err == nil {
+			player := Player{}
+			err = player.initPlayer(backerID)
+			if err == nil {
+				players = append(players, player)
+			} else {
+				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "backer " + backerIDString + " is not found"})
+			}
+		} else {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "backerId is not number"})
+		}
 	}
 
 	return
