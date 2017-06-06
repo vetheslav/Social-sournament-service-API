@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"math/rand"
+	"time"
 )
 
 type TournamentPlayer struct {
@@ -80,7 +82,7 @@ func (tournament Tournament) isAvailable() bool {
 	return tournament.status == true
 }
 
-func (tournament *Tournament) addPlayerToTournament(player Player, backers []Player) (err error) {
+func (tournament *Tournament) addPlayerToTournament(player Player, backers []Player, needBackerBalance float64) (err error) {
 	_, _, err = db.Query(`
 INSERT INTO tournament_players SET player_id = %d, tournament_id = %d`, player.Id, tournament.Id)
 	if err != nil {
@@ -88,22 +90,24 @@ INSERT INTO tournament_players SET player_id = %d, tournament_id = %d`, player.I
 	}
 
 	if len(backers) == 0 {
-		err = player.takePoints(tournament.Deposit)
+		needBackerBalance = tournament.Deposit
 	}
+	err = player.takePoints(needBackerBalance)
+
 	tournament.players = append(tournament.players, TournamentPlayer{Player: player, Backers: backers})
 
 	return
 }
 
-func (tournament *Tournament) addBackerToTournament(player Player, backers []Player) (err error) {
+func (tournament *Tournament) addBackerToTournament(player Player, backers []Player) (err error, needBackerBalance float64) {
 	countBackers := float64(len(backers))
 	if countBackers > 0 {
-		needBackerBalance := tournament.Deposit / countBackers
+		needBackerBalance = tournament.Deposit / countBackers
 		for _, backer := range backers {
 			_, _, errQuery := db.Query(`
 INSERT INTO tournament_player_backers SET player_id = %d, tournament_id = %d, backer_id = %d`, player.Id, tournament.Id, backer.Id)
 			if errQuery != nil {
-				return errQuery
+				return errQuery, needBackerBalance
 			}
 
 			err = backer.takePoints(needBackerBalance)
@@ -152,6 +156,52 @@ func (tournament Tournament) canBackersParticipateTournament(backers []Player) b
 	}
 
 	return false
+}
+
+func (tournament Tournament) getWinner() (player TournamentPlayer, err error) {
+	countPlayers := len(tournament.players)
+	if countPlayers >= 2 {
+		rand.Seed(time.Now().Unix())
+		player = tournament.players[rand.Intn(countPlayers)]
+	} else {
+		err = errors.New("Tournament needs more then 1 participates")
+	}
+	return
+}
+
+func (tournament *Tournament) complete(winner TournamentPlayer) (prize float64, err error) {
+	countPlayers := len(tournament.players)
+	countBackers := len(winner.Backers)
+	prize = tournament.Deposit * float64(countPlayers)
+
+	if countBackers == 0 {
+		err = winner.Player.fundPoints(prize)
+	} else {
+		playerPrize := prize / float64(countBackers+1)
+		err = winner.Player.fundPoints(playerPrize)
+		if err == nil {
+			for _, backerWinner := range winner.Backers {
+				err = backerWinner.fundPoints(playerPrize)
+				if err != nil {
+					break
+				}
+			}
+		}
+	}
+
+	if err == nil {
+		err = tournament.setComplete()
+	}
+
+	return
+}
+
+func (tournament *Tournament) setComplete() error {
+	_, _, err := db.Query(`
+UPDATE tournaments SET status = false WHERE id = %d`, tournament.Id)
+	tournament.status = false
+
+	return err
 }
 
 func (tournamentPlayer *TournamentPlayer) initTournamentPlayerBackers(tournament_id int) (err error) {

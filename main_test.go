@@ -37,6 +37,12 @@ var announceTournamentErrorsTests = []string{
 	"/announceTournament?deposit=hello",
 }
 
+var resultTournamentErrorsTests = []string{
+	"/resultTournament",
+	"/resultTournament?tournamentId=hello",
+	"/resultTournament?tournamentId=0",
+}
+
 func TestBalancePage(t *testing.T) {
 	mysqlConnect()
 	defer db.Close()
@@ -168,5 +174,112 @@ func TestAnnounceTournament(t *testing.T) {
 	if assert.NoError(t, announceTournamentPage(context)) {
 		assert.Regexp(t, "{\"tournamentId\":.*", rec.Body.String())
 		db.Query("DELETE FROM tournaments WHERE id = LAST_INSERT_ID()")
+	}
+}
+
+func TestResultTournamentErrors(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	for _, url := range resultTournamentErrorsTests {
+		req := httptest.NewRequest(echo.GET, url, nil)
+		rec := httptest.NewRecorder()
+		c := echoServer.NewContext(req, rec)
+
+		assert.Error(t, takePage(c))
+	}
+}
+
+func TestResultTournamentOnePlayer(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE tournaments SET status = 1, deposit = 1000 WHERE id = 1")
+	db.Query("DELETE FROM tournament_players WHERE tournament_id = 1")
+	db.Query("DELETE FROM tournament_player_backers WHERE tournament_id = 1")
+	db.Query("INSERT INTO tournament_players SET tournament_id = 1, player_id = 1")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/resultTournament?tournamentId=1", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	assert.Error(t, resultTournamentPage(context))
+}
+
+func TestResultTournamentPlayersWithoutBackers(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE tournaments SET status = 1, deposit = 1000 WHERE id = 1")
+	db.Query("DELETE FROM tournament_players WHERE tournament_id = 1")
+	db.Query("DELETE FROM tournament_player_backers WHERE tournament_id = 1")
+	db.Query("INSERT INTO tournament_players SET tournament_id = 1, player_id = 1")
+	db.Query("INSERT INTO tournament_players SET tournament_id = 1, player_id = 2")
+	db.Query("UPDATE players SET balance = 12 WHERE id = 1")
+	db.Query("UPDATE players SET balance = 13 WHERE id = 2")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/resultTournament?tournamentId=1", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	if assert.NoError(t, resultTournamentPage(context)) {
+		balanceSum := 0.00
+		player := Player{}
+		player.initPlayer(1)
+		balanceSum += player.Balance
+
+		player = Player{}
+		player.initPlayer(2)
+		balanceSum += player.Balance
+
+		assert.Equal(t, 2025.00, balanceSum)
+	}
+}
+
+func TestResultTournamentPlayersWithBackers(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE tournaments SET status = 1, deposit = 1000 WHERE id = 1")
+	db.Query("DELETE FROM tournament_players WHERE tournament_id = 1")
+	db.Query("DELETE FROM tournament_player_backers WHERE tournament_id = 1")
+	db.Query("INSERT INTO tournament_players SET tournament_id = 1, player_id = 1")
+	db.Query("INSERT INTO tournament_players SET tournament_id = 1, player_id = 2")
+	db.Query("INSERT INTO tournament_player_backers SET tournament_id = 1, player_id = 2, backer_id=3")
+	db.Query("INSERT INTO tournament_player_backers SET tournament_id = 1, player_id = 2, backer_id=4")
+	db.Query("UPDATE players SET balance = 10 WHERE id = 1")
+	db.Query("UPDATE players SET balance = 20 WHERE id = 2")
+	db.Query("UPDATE players SET balance = 30 WHERE id = 3")
+	db.Query("UPDATE players SET balance = 40 WHERE id = 4")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/resultTournament?tournamentId=1", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	if assert.NoError(t, resultTournamentPage(context)) {
+		balanceSum := 0.00
+		player := Player{}
+		player.initPlayer(1)
+		balanceSum += player.Balance
+		player = Player{}
+		player.initPlayer(2)
+		balanceSum += player.Balance
+		player = Player{}
+		player.initPlayer(3)
+		balanceSum += player.Balance
+		player = Player{}
+		player.initPlayer(4)
+		balanceSum += player.Balance
+
+		assert.Equal(t, 2100, int(balanceSum))
 	}
 }

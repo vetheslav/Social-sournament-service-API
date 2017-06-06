@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+//http://127.0.0.1:1323/joinTournament?tournamentId=1&playerId=3&backerId=1&backerId=2
 var joinTournamentErrorsTests = []string{
 	"/joinTournament",
 	"/joinTournament?tournamentId=dfd",

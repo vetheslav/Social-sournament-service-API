@@ -34,6 +34,7 @@ func main() {
 	echoServer.GET("fund", fundPage)
 	echoServer.GET("announceTournament", announceTournamentPage)
 	echoServer.GET("joinTournament", joinTournamentPage)
+	echoServer.GET("resultTournament", resultTournamentPage)
 
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
@@ -107,6 +108,7 @@ func announceTournamentPage(context echo.Context) error {
 }
 
 func joinTournamentPage(context echo.Context) error {
+	var needFee float64
 	tournament, err := getTournamentByTournamentID(context)
 	if err == nil {
 		if tournament.isAvailable() {
@@ -118,9 +120,9 @@ func joinTournamentPage(context echo.Context) error {
 				if err == nil {
 					if tournament.canPlayerToParticipateByBalance(player) || tournament.canBackersParticipateTournament(backers) {
 						if !tournament.isPlayerInTournament(player) && !tournament.isPlayerInTournamentBackers(player) {
-							err = tournament.addBackerToTournament(player, backers)
+							err, needFee = tournament.addBackerToTournament(player, backers)
 							if err == nil {
-								err = tournament.addPlayerToTournament(player, backers)
+								err = tournament.addPlayerToTournament(player, backers, needFee)
 								if err == nil {
 									return context.JSON(http.StatusOK, tournament)
 								}
@@ -139,6 +141,29 @@ func joinTournamentPage(context echo.Context) error {
 			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "tournament is not available"})
 		}
 	}
+	return err
+}
+
+func resultTournamentPage(context echo.Context) error {
+	tournament, err := getTournamentByTournamentID(context)
+	if err == nil {
+		if tournament.isAvailable() {
+			var winnerPlayer TournamentPlayer
+			winnerPlayer, err = tournament.getWinner()
+			if err == nil {
+				var prize float64
+				prize, err = tournament.complete(winnerPlayer)
+				if err == nil {
+					err = context.JSON(http.StatusOK, echo.Map{"winners": echo.Map{"playerId": winnerPlayer.Player.Id, "prize": prize}})
+				}
+			} else {
+				err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": err.Error()})
+			}
+		} else {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "tournament is not available"})
+		}
+	}
+
 	return err
 }
 
