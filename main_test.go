@@ -20,6 +20,11 @@ var balancePageTests = []balancePagePair{
 	{"/balance?playerId=1", false, ""},
 }
 
+var takePointsErrorsTests = []string{
+	"/take?playerId=1",
+	"/take?playerId=1&points=df",
+}
+
 func TestBalancePage(t *testing.T) {
 	mysqlConnect()
 	defer db.Close()
@@ -30,12 +35,61 @@ func TestBalancePage(t *testing.T) {
 	for _, test := range balancePageTests {
 		req := httptest.NewRequest(echo.GET, test.url, nil)
 		rec := httptest.NewRecorder()
-		c := echoServer.NewContext(req, rec)
+		context := echoServer.NewContext(req, rec)
 
-		if !test.waitError && assert.NoError(t, balancePage(c)) {
+		if !test.waitError && assert.NoError(t, balancePage(context)) {
 			assert.Regexp(t, "{\"playerId\":1,\"balance\":.*", rec.Body.String())
 		} else {
-			assert.Error(t, balancePage(c))
+			assert.Error(t, balancePage(context))
 		}
+	}
+}
+
+func TestTakePointsErrors(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	echoServer := echo.New()
+
+	for _, url := range takePointsErrorsTests {
+		req := httptest.NewRequest(echo.GET, url, nil)
+		rec := httptest.NewRecorder()
+		c := echoServer.NewContext(req, rec)
+
+		assert.Error(t, takePage(c))
+	}
+}
+
+func TestTakePointsNotEnough(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE players SET balance = 0 WHERE id = 1")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/take?playerId=1&points=10", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	assert.Error(t, takePage(context))
+}
+
+
+func TestTakePoints(t *testing.T) {
+	mysqlConnect()
+	defer db.Close()
+	conf.initConfig()
+
+	db.Query("UPDATE players SET balance = 30 WHERE id = 1")
+
+	echoServer := echo.New()
+	req := httptest.NewRequest(echo.GET, "/take?playerId=1&points=10", nil)
+	rec := httptest.NewRecorder()
+	context := echoServer.NewContext(req, rec)
+
+	if assert.NoError(t, takePage(context)) {
+		assert.JSONEq(t, rec.Body.String(), `{"playerId":1,"balance":20}`)
 	}
 }

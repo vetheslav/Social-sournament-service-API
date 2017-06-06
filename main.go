@@ -30,6 +30,7 @@ func main() {
 	echoServer := echo.New()
 
 	echoServer.GET("balance", balancePage)
+	echoServer.GET("take", takePage)
 
 	echoServer.Logger.Fatal(echoServer.Start(conf.httpServer.host + ":" + conf.httpServer.port))
 }
@@ -43,20 +44,67 @@ func mysqlConnect() {
 	CheckError(err, "Connecting DB")
 }
 
-func balancePage(c echo.Context) error {
-	playerIDString := c.QueryParam("playerId")
-	if playerIDString != "" {
-		playerID, err := strconv.Atoi(playerIDString)
-		if err == nil {
-			player := Player{}
-			err = player.initPlayer(playerID)
-			if err == nil {
-				return c.JSON(http.StatusOK, player)
-			}
-			return echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player not found"})
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId in not number"})
+func balancePage(context echo.Context) error {
+	player, err := getPlayerByPlayerID(context)
+	if err == nil {
+		return context.JSON(http.StatusOK, player)
 	}
-	return echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId not found"})
+
+	return err
 }
 
+func takePage(context echo.Context) error {
+	player, err := getPlayerByPlayerID(context)
+	if err == nil {
+		var points float64
+		points, err = getPoints(context)
+		if err == nil {
+			if player.Balance >= points {
+				err = player.takePoints(points)
+				if err == nil {
+					return context.JSON(http.StatusOK, player)
+				}
+			} else {
+				err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "not enough points"})
+			}
+		}
+	}
+
+	return err
+}
+
+func getPlayerByPlayerID(context echo.Context) (player Player, err error) {
+	player = Player{}
+	playerIDString := context.QueryParam("playerId")
+	if playerIDString != "" {
+		var playerID int
+		playerID, err = strconv.Atoi(playerIDString)
+		if err == nil {
+			err = player.initPlayer(playerID)
+			if err != nil {
+				err = echo.NewHTTPError(http.StatusNotFound, echo.Map{"message": "player not found"})
+			}
+		} else {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId in not number"})
+		}
+	} else {
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "playerId not found"})
+	}
+
+	return
+}
+
+
+func getPoints(context echo.Context) (points float64, err error) {
+	pointsString := context.QueryParam("points")
+	if pointsString != "" {
+		points, err = strconv.ParseFloat(pointsString, 64)
+		if err != nil {
+			err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points in not number"})
+		}
+	} else {
+		err = echo.NewHTTPError(http.StatusInternalServerError, echo.Map{"message": "points not found"})
+	}
+
+	return
+}
