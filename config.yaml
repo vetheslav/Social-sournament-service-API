@@ -7,4 +7,4 @@ mysql:
 
 http_server:
   host: 127.0.0.1
-  port: 80
+  port: 1323

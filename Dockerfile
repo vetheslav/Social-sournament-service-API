@@ -4,9 +4,9 @@ ENV GOPATH /go
 
 RUN go get github.com/vetheslav/Social-sournament-service-API
 COPY . /$GOPATH/
-RUN ls
+RUN go test $GOPATH/*.go
 RUN go build -o http_api $GOPATH/*.go
 
 
 ENTRYPOINT /go/bin/http_api
-EXPOSE 80
+EXPOSE 1323
