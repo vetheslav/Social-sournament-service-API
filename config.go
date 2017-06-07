@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/zpatrick/go-config"
-	"os"
 	"path/filepath"
+	"runtime"
 )
 
 var conf Config
@@ -25,7 +25,9 @@ func (conf *Config) getConfigObject() {
 }
 
 func (conf *Config) openConfigPath() (dir string) {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	_, b, _, _ := runtime.Caller(0)
+	basePath   := filepath.Dir(b)
+	dir, err := filepath.Abs(basePath)
 	CheckError(err, "Open config path")
 	//dir = "/Users/vetheslav/Dropbox/programming/test/Social-sournament-service-API/"
 
